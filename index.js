@@ -12,7 +12,7 @@ const gameWidth = (canvas.width = 800);
 
 // -------------- canvas
 //
-function canvasRepaint(player) {
+function canvasRepaint(player, time) {
   //background
   const fillColour = "rgba(3, 3, 3, 0.9)";
   ctx.fillStyle = fillColour;
@@ -31,8 +31,23 @@ function canvasRepaint(player) {
 
   //healthbar
   healthPercent = player.health / 500;
-  ctx.fillStyle = "red";
-  ctx.fillRect(gameWidth - 140, gameHeight - 40, healthPercent * 120, 10);
+  // console.log(healthPercent);
+
+  if (healthPercent < 0.3) {
+    if ((time % 10 > 0) & (time % 10 < 5)) {
+      // console.log("looowww");
+
+      ctx.fillStyle = "red";
+      ctx.fillRect(gameWidth - 140, gameHeight - 40, healthPercent * 120, 10);
+    } else {
+      ctx.fillStyle = "black";
+      ctx.fillRect(gameWidth - 140, gameHeight - 40, healthPercent * 120, 10);
+    }
+  } else {
+    ctx.fillStyle = "red";
+    ctx.fillRect(gameWidth - 140, gameHeight - 40, healthPercent * 120, 10);
+  }
+
   //score
   ctx.textAlign = "start";
   ctx.fillStyle = "white";
@@ -58,10 +73,12 @@ const controller = {
     x: false,
     c: false,
     v: false,
+    space: false,
   },
 
   keyListener: function (e) {
-    // e.preventDefault();
+    e.preventDefault();
+    console.log(e.code);
 
     keyState = e.type == "keydown" ? true : false;
     switch (e.code) {
@@ -85,6 +102,9 @@ const controller = {
         break;
       case "KeyV":
         this.state.v = keyState;
+        break;
+      case "Space":
+        this.state.space = keyState;
         break;
       default:
         break;
@@ -112,7 +132,7 @@ const weapons = {
     v_x: 0,
     width: 14,
     height: 80,
-    colour: "white",
+    colour: "purple",
     damage: 1000,
     cooloff: 55, //time until next use
     health: 10, //how many obstacles it hits before exploding
@@ -390,13 +410,14 @@ const checkPlayerCollisions = (state) => {
           Math.abs(state.y - gameObjects[i].y) <
             state.height / 2 + gameObjects[i].height / 2
         ) {
-          gameObjects[i].colour = "orange";
-          state.colour = "orange";
+          // gameObjects[i].colour = "orange";
+
           gameObjects[i].health -= 1000; //kills them dead
           if (gameObjects[i].type == "bonus") {
-            //deal with bonus logic
             gameObjects[i].bonus.action(state);
-          } else {
+          } else if (gameObjects[i].type == "alien") {
+            state.colour = "red";
+            setTimeout(() => (state.colour = "blue"), 100);
             state.health -= 50;
           }
         }
@@ -418,19 +439,14 @@ const checkPlayerCollisions = (state) => {
                 shots[j].height / 2 + state.height / 2
             ) {
               //changed dynamcally based on health (in draw fn?)
-              console.log("bashhhhhhhhhhhhhhhhhhhh");
 
-              state.colour = "green";
+              state.colour = "red";
+              setTimeout(() => (state.colour = "blue"), 100);
+
               state.hit(shots[j].damage);
               console.log(state.health);
 
               shots[j].health -= 1;
-              // state.hit(shots[j].damage)
-
-              // console.log(shots[j]);
-              // console.log(gameObjects[k].health);
-
-              // gameObjects = gameObjects
             } else {
               // console.log("ok");
             }
@@ -494,7 +510,7 @@ const removeBonuses = (state) => {
         }
       });
       state.bonuses = state.bonuses.filter((b) => b.t_init + b.duration > time);
-      console.log("bonuses", state.bonuses.length);
+      // console.log("bonuses", state.bonuses.length);
     },
   };
 };
@@ -603,26 +619,28 @@ const trajectories = {
   ],
 };
 
+const modifyWeapon = ({ state, weapon, property, newvalue }) => {
+  console.log("modding");
+
+  if (property == "cooloff") {
+    state.weapons[weapon].cooling = 0;
+  }
+  state.weapons[weapon][property] = newvalue;
+  // state.weapons[weapon].cooloff = weapons[weapon][property];
+};
+
 // factory for all game objects
 const objectInitState = (name, trajectory, t_init) => {
-  let type, x, colour, shotTimings, score, health;
+  let type, x, colour, shotTimings, score, health, width, height;
   let y = 0;
   let bonus = null;
-
-  const modifyWeapon = ({ state, weapon, property, newvalue }) => {
-    console.log("modding");
-
-    if (property == "cooloff") {
-      state.weapons[weapon].cooling = 0;
-    }
-    state.weapons[weapon][property] = newvalue;
-    // state.weapons[weapon].cooloff = weapons[weapon][property];
-  };
 
   switch (name) {
     case "vader1":
       {
         type = "alien";
+        width = 20;
+        height = 35;
         shotTimings = [
           { first: t_init, delay: 100, weapon: "aliengun" }, //first: time for first shot, delay: ticks until repeated (can make v large if only want once), weapon, weapon
           { first: t_init, delay: 50, weapon: "aliengun_2" },
@@ -637,6 +655,8 @@ const objectInitState = (name, trajectory, t_init) => {
     case "vader2":
       {
         type = "alien";
+        width = 20;
+        height = 35;
         shotTimings = [{ first: t_init + 5, delay: 100, weapon: "alienlaser" }];
         score = 50;
         health = 100;
@@ -647,6 +667,8 @@ const objectInitState = (name, trajectory, t_init) => {
     case "vader3":
       {
         type = "alien";
+        width = 20;
+        height = 35;
         shotTimings = [{ first: t_init + 5, delay: 400, weapon: "aliengun" }];
         score = 200;
         health = 50;
@@ -657,6 +679,8 @@ const objectInitState = (name, trajectory, t_init) => {
     case "healthBonus":
       {
         type = "bonus";
+        width = 12;
+        height = 12;
         shotTimings = [];
         score = 100;
         health = 1000;
@@ -676,6 +700,8 @@ const objectInitState = (name, trajectory, t_init) => {
     case "cannonSpeedBonus":
       {
         type = "bonus";
+        width = 12;
+        height = 12;
         shotTimings = [];
         score = 100;
         health = 1000;
@@ -706,6 +732,8 @@ const objectInitState = (name, trajectory, t_init) => {
     case "unlockBigLaser":
       {
         type = "bonus";
+        width = 12;
+        height = 12;
         shotTimings = [];
         score = 100;
         health = 1000;
@@ -745,8 +773,8 @@ const objectInitState = (name, trajectory, t_init) => {
     y,
     x_v: 0,
     y_v: 0,
-    width: 20,
-    height: 40,
+    width,
+    height,
     colour,
     trajectory,
     shotTimings,
@@ -787,7 +815,7 @@ const objectMaker = (state) => {
 
 // ---------------------------- game levels
 
-const runLevel = (time, level) => {
+const runLevel = (time, state, level) => {
   switch (level) {
     case 1:
       {
@@ -877,14 +905,47 @@ const runLevel = (time, level) => {
         }
       }
       break;
+    case 3:
+      {
+        if (time == 5) {
+          modifyWeapon({
+            state,
+            weapon: "gun",
+            property: "cooloff",
+            newvalue: 3,
+          });
+          modifyWeapon({
+            state,
+            weapon: "biglaser",
+            property: "owned",
+            newvalue: true,
+          });
+          //TO DO! all properties need to be copies from weapons object to playinitialstate object and read from there
+          // modifyWeapon({
+          //   state,
+          //   weapon: "laser",
+          //   property: "v_y",
+          //   newvalue: 8,
+          // });
+        }
+      }
+      break;
     default: {
       //   alert("no");
     }
   }
 };
 //--------------- --------------event listeners
-
+// canvas.addEventListener("keydown", (e) => e.preventDefault());
 window.addEventListener("keydown", (e) => controller.keyListener(e));
+window.addEventListener("keydown", (e) => {
+  if (e.code == "Space" && game.gameOver == true) {
+    console.log("starting");
+
+    game.start();
+  }
+});
+
 window.addEventListener("keyup", (e) => controller.keyListener(e));
 
 //-----------------------------game setup
@@ -892,32 +953,43 @@ window.addEventListener("keyup", (e) => controller.keyListener(e));
 const game = {
   gameObjects: [],
   level: 1,
-  tempScore: 1,
+
+  gameOver: true,
+  p1: null,
+  time: 0,
 
   start() {
-    //init player
-    const player1InitState = playerInitialState;
-    const p1 = playerMaker(player1InitState);
-    console.log(p1);
+    console.log("game . start");
 
-    canvasRepaint(p1);
-    let time = 0;
-    let message = "";
+    //reset
+    this.gameOver = false;
+    this.gameObjects = [];
+    this.level = 3;
+    //init player
+    this.p1 = null;
+    p1InitState = Object.assign({}, playerInitialState);
+    this.p1 = playerMaker(p1InitState);
+    console.log(this.p1);
+    this.time = 0;
+
+    canvasRepaint(this.p1, this.time);
     const anim = () => {
-      time++;
-      canvasRepaint(p1);
-      if (time < 600) {
+      this.time++;
+      canvasRepaint(this.p1, this.time);
+      if (this.time < 600) {
         canvasMessagePaint(`LEVEL ${this.level}`);
       }
-      if (p1.score >= this.level * 1500 + this.level * 250) {
-        this.tempScore = p1.score;
+      if (
+        this.p1.score >= this.level * 1500 + this.level * 250 &&
+        this.gameObjects.length == 0
+      ) {
         this.level++;
-        time = 0;
+        this.time = 0;
         this.gameObjects = [];
-        p1.bonuses.forEach((b) => b.remove());
-        p1.bonuses = [];
+        this.p1.bonuses.forEach((b) => b.remove());
+        this.p1.bonuses = [];
       }
-      runLevel(time, this.level);
+      runLevel(this.time, this.p1, this.level);
       //remove if off screen or no health
       //MAYBE make enemy invisible until it has no active shots left.. then check for health and delete
       this.gameObjects = this.gameObjects.filter(
@@ -925,9 +997,9 @@ const game = {
       );
       //update
       this.gameObjects.forEach((e) => {
-        e.shoot(time);
+        e.shoot(this.time);
         e.move();
-        e.changeDirection(time);
+        e.changeDirection(this.time);
         e.drawAndMoveShots();
         e.draw();
       });
@@ -936,21 +1008,31 @@ const game = {
 
       //track player
 
-      p1.shoot();
-      p1.move();
-      p1.checkWeaponsCollisions(this.gameObjects);
-      p1.drawAndMoveShots();
-      p1.draw();
-      p1.removeBonuses(time);
+      this.p1.shoot();
+      this.p1.move();
+      this.p1.checkWeaponsCollisions(this.gameObjects);
+      this.p1.drawAndMoveShots();
+      this.p1.draw();
+      this.p1.removeBonuses(this.time);
+      this.p1.checkPlayerCollisions(this.gameObjects);
 
-      p1.checkPlayerCollisions(this.gameObjects);
-      if (p1.health > -1) {
+      if (this.p1.health > 0) {
         window.requestAnimationFrame(anim);
       } else {
-        alert("game over");
+        this.p1.health = 0;
+        this.gameOver = true;
+        canvasRepaint(this.p1, this.time);
+        canvasRepaint(this.p1, this.time);
+        canvasRepaint(this.p1, this.time);
+        canvasRepaint(this.p1, this.time);
+        canvasRepaint(this.p1, this.time);
+        canvasMessagePaint(`GAME OVER`);
+        window.cancelAnimationFrame(anim);
+        return;
+        // alert("game over");
       }
     };
-    window.requestAnimationFrame(anim);
+    anim();
   },
 };
 
