@@ -964,7 +964,7 @@ const game = {
     //reset
     this.gameOver = false;
     this.gameObjects = [];
-    this.level = 3;
+    this.level = 1;
     //init player
     this.p1 = null;
     p1InitState = Object.assign({}, playerInitialState);
