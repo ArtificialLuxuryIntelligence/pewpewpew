@@ -278,6 +278,8 @@ const withDrawAndMoveShots = (state) => {
 
       //draw and update
       shots.forEach((s) => {
+        console.log(s);
+
         //move shots
         s.y = s.y + direction * s.v_y;
         s.x = s.x + direction * s.v_x;
@@ -298,7 +300,7 @@ const withDrawAndMoveShots = (state) => {
 const shootWeapon = (weapon, player) => {
   let direction = player.type == "player" ? -1 : 1;
 
-  wStats = weapons[weapon];
+  wStats = player.weapons[weapon];
   wUser = player.weapons[weapon];
   if (wUser.owned) {
     wUser.shots.push({
@@ -531,20 +533,23 @@ const playerInitialState = {
     gun: {
       owned: true,
       cooling: 0,
-      cooloff: weapons.gun.cooloff,
+      // cooloff: weapons.gun.cooloff,
       shots: [],
+      ...weapons["gun"],
     },
     laser: {
       owned: true,
       cooling: 0,
-      cooloff: weapons.laser.cooloff,
+      // cooloff: weapons.laser.cooloff,
       shots: [],
+      ...weapons["laser"],
     },
     biglaser: {
       owned: false,
       cooling: 0,
-      cooloff: weapons.biglaser.cooloff,
+      // cooloff: weapons.biglaser.cooloff,
       shots: [],
+      ...weapons["biglaser"],
     },
   },
   bonuses: [],
@@ -921,12 +926,12 @@ const runLevel = (time, state, level) => {
             newvalue: true,
           });
           //TO DO! all properties need to be copies from weapons object to playinitialstate object and read from there
-          // modifyWeapon({
-          //   state,
-          //   weapon: "laser",
-          //   property: "v_y",
-          //   newvalue: 8,
-          // });
+          modifyWeapon({
+            state,
+            weapon: "laser",
+            property: "v_y",
+            newvalue: 8,
+          });
         }
       }
       break;
@@ -952,7 +957,7 @@ window.addEventListener("keyup", (e) => controller.keyListener(e));
 
 const game = {
   gameObjects: [],
-  level: 1,
+  level: 1, //actually set in start fn below
 
   gameOver: true,
   p1: null,
@@ -964,7 +969,7 @@ const game = {
     //reset
     this.gameOver = false;
     this.gameObjects = [];
-    this.level = 1;
+    this.level = 3;
     //init player
     this.p1 = null;
     p1InitState = Object.assign({}, playerInitialState);
