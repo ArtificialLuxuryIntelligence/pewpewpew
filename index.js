@@ -167,7 +167,7 @@ const weapons = {
     damage: 100,
     cooloff: 85, //time until next use
     cooling: 0,
-    health: 6, //how many obstacles it can hit before disappearing
+    health: 9, //how many obstacles it can hit before disappearing
   },
   biglaser: {
     owned: false,
@@ -624,6 +624,7 @@ const checkWeaponsCollisions = (state) => {
             for (let m = 0; m < alienGunShots.length; m++) {
               if (
                 shots[j].weaponType == "laser" &&
+                alienGunShots[m].health > 0 &&
                 Math.abs(shots[j].x - alienGunShots[m].x) <
                   shots[j].width / 2 + alienGunShots[m].width / 2 &&
                 Math.abs(shots[j].y - alienGunShots[m].y) <
