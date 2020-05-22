@@ -180,6 +180,7 @@ const weapons = {
   },
   gun: {
     owned: true,
+    multi: ["laser"],
     range: 400,
     v_y: 10,
     v_x: 0,
@@ -351,15 +352,30 @@ const shootWeapon = (weapon, player) => {
   if (wUser.owned) {
     wUser.shots.push({
       weaponType: weapon,
-      //general shots object might be more efficient?
       x_init: player.x,
       y_init: player.y + (direction * player.height) / 2,
       x: player.x,
       y: player.y + (direction * player.height) / 2,
       active: true,
-      health: player.health,
+      // health: weapon.health,
       ...wStats, //this has too much info
     });
+  }
+  if (wUser.multi && wUser.multi.length) {
+    console.log("we got a multii");
+
+    for (w of wUser.multi) {
+      wUser.shots.push({
+        weaponType: w,
+        x_init: player.x,
+        y_init: player.y + (direction * player.height) / 2,
+        x: player.x,
+        y: player.y + (direction * player.height) / 2,
+        active: true,
+        // health: weapon.health,
+        ...wStats, //this has too much info
+      });
+    }
   }
 };
 
@@ -488,8 +504,6 @@ const checkPlayerCollisions = (state) => {
           Math.abs(state.y - gameObjects[i].y) <
             state.height / 2 + gameObjects[i].height / 2
         ) {
-          // gameObjects[i].colour = "orange";
-
           gameObjects[i].health -= 1000; //kills them dead
           if (gameObjects[i].type == "bonus") {
             gameObjects[i].bonus.action(state, time);
@@ -560,9 +574,10 @@ const checkWeaponsCollisions = (state) => {
 
               shots[j].health -= 1;
               gameObjects[k].hit(shots[j].damage);
-              if (gameObjects[k].health <= 0) {
-                state.score += gameObjects[k].score;
-              }
+            }
+            if (gameObjects[k].health <= 0) {
+              shots[j].health -= 1;
+              state.score += gameObjects[k].score;
             }
 
             //player laser stops alien gunshots
