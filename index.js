@@ -6,7 +6,7 @@
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
 const gameHeight = (canvas.height = 450);
-const gameWidth = (canvas.width = 800);
+const gameWidth = (canvas.width = 850);
 
 // -------------- canvas
 //
@@ -114,7 +114,7 @@ const controller = {
 const weapons = {
   laser: {
     owned: true,
-    range: 300,
+    range: 120,
     v_y: 3, //y v_y
     v_x: 0,
     width: 100,
@@ -285,7 +285,7 @@ const withDrawAndMoveShots = (state) => {
 
       //draw and update
       shots.forEach((s) => {
-        // console.log(s);
+        console.log(s);
 
         //move shots
         s.y = s.y + direction * s.v_y;
@@ -310,6 +310,8 @@ const shootWeapon = (weapon, player) => {
   wUser = player.weapons[weapon];
   if (wUser.owned) {
     wUser.shots.push({
+      weaponType: weapon,
+      //general shots object might be more efficient?
       x_init: player.x,
       y_init: player.y + (direction * player.height) / 2,
       x: player.x,
@@ -421,6 +423,18 @@ const restoreDefaults = (state) => {
   };
 };
 
+const modifyWeapon = ({ state, weapon, property, newvalue }) => {
+  console.log("modding...");
+  console.log("weapon", state.weapons[weapon]);
+
+  if (property == "cooloff") {
+    state.weapons[weapon].cooling = 0;
+  }
+  state.weapons[weapon][property] = newvalue;
+  console.log("modded");
+  console.log("weapon", state.weapons[weapon]);
+};
+
 // with aliens, bonuses and alien shots
 const checkPlayerCollisions = (state) => {
   return {
@@ -492,7 +506,6 @@ const checkWeaponsCollisions = (state) => {
 
         for (let j = shots.length - 1; j >= 0; j--) {
           for (let k = gameObjects.length - 1; k >= 0; k--) {
-            // if (shots.length) {
             if (
               gameObjects[k].health > 0 &&
               Math.abs(shots[j].x - gameObjects[k].x) <
@@ -500,7 +513,7 @@ const checkWeaponsCollisions = (state) => {
               Math.abs(shots[j].y - gameObjects[k].y) <
                 shots[j].height / 2 + gameObjects[k].height / 2
             ) {
-              //changed dynamcally based on health (in draw fn?)
+              //enemy flash white when hit
               let c = gameObjects[k].colour;
               gameObjects[k].colour = "white";
               setTimeout(() => (gameObjects[k].colour = c), 50);
@@ -511,7 +524,26 @@ const checkWeaponsCollisions = (state) => {
                 state.score += gameObjects[k].score;
               }
             }
-            // }
+
+            //player laser stops alien gunshots
+            console.log(gameObjects[k]);
+
+            let alienGunShots = [
+              ...gameObjects[k].weapons.aliengun.shots,
+              ...gameObjects[k].weapons.aliengun_2.shots,
+              ...gameObjects[k].weapons.aliengun_n2.shots,
+            ];
+            for (let m = 0; m < alienGunShots.length; m++) {
+              if (
+                shots[j].weaponType == "laser" &&
+                Math.abs(shots[j].x - alienGunShots[m].x) <
+                  shots[j].width / 2 + alienGunShots[m].width / 2 &&
+                Math.abs(shots[j].y - alienGunShots[m].y) <
+                  shots[j].height / 2 + alienGunShots[m].height / 2
+              ) {
+                alienGunShots[m].health -= 1;
+              }
+            }
           }
         }
       }
@@ -614,8 +646,6 @@ const alienShoot = (state) => {
 
 // -------------- --------------gameObjects (bonuses and aliens)
 
-// ----
-
 const trajectories = {
   trajBuilder: (t_init, array) => {
     return array.map((e) => {
@@ -650,37 +680,77 @@ const trajectories = {
       [125, -0.4, null],
     ],
   ],
+  pawns: [
+    [
+      [5, -0.5, 0.2], // format: [delay, v_x, v_y] // delay: time(tics) after object is created, v_x: new x axis velocity;v_y: new y axis velocity
+      [50, 0.4, null],
+      [100, 0.4, null],
+      [125, -0.4, null],
+      [800, -0.4, null],
+      [1200, 0.4, null],
+    ],
+    [
+      [5, -0.5, 0.2], // format: [delay, v_x, v_y] // delay: time(tics) after object is created, v_x: new x axis velocity;v_y: new y axis velocity
+      [100, 0.4, null],
+      [400, 0.4, null],
+      [800, -0.4, null],
+      [1200, 0.4, null],
+    ],
+  ],
 };
 
-const modifyWeapon = ({ state, weapon, property, newvalue }) => {
-  console.log("modding...");
-  console.log("weapon", state.weapons[weapon]);
+const shotTimings = {
+  shotBuilder: (t_init, array) => {
+    return array.map((e) => {
+      return { first: t_init + e[0], delay: e[1], weapon: e[2] };
+    });
+  },
+  gun: [
+    [
+      [0, 50, "aliengun"], //first: time for first shot, delay: ticks until repeated (can make v large if only want once), weapon, weapon
+      [0, 50, "aliengun_2"],
+      [25, 50, "aliengun_n2"],
+    ],
+    [[5, 100, "aliengun"]],
+  ],
 
-  if (property == "cooloff") {
-    state.weapons[weapon].cooling = 0;
-  }
-  state.weapons[weapon][property] = newvalue;
-  console.log("modded");
-  console.log("weapon", state.weapons[weapon]);
+  laser: [[5, 400, "alienlaser"]],
 };
-
 // factory for all game objects
-const objectInitState = (name, trajectory, t_init) => {
-  let type, x, colour, shotTimings, score, health, width, height;
+const objectInitState = (name, trajectory, shotTimings, t_init) => {
+  let type, x, colour, score, health, width, height;
   let y = 0;
   let bonus = null;
 
   switch (name) {
+    case "pawn1":
+      {
+        type = "alien";
+        width = 15;
+        height = 5;
+        colour = "pink";
+        score = 20;
+        health = 20;
+        x = gameWidth / 2;
+      }
+      break;
+    // case "pawn2":
+    //   {
+    //     type = "alien";
+    //     width = 15;
+    //     height = 5;
+    //     shotTimings = [];
+    //     colour = "pink";
+    //     score = 20;
+    //     health = 20;
+    //     x = gameWidth / 3;
+    //   }
+    //   break;
     case "vader1":
       {
         type = "alien";
         width = 20;
         height = 35;
-        shotTimings = [
-          { first: t_init, delay: 100, weapon: "aliengun" }, //first: time for first shot, delay: ticks until repeated (can make v large if only want once), weapon, weapon
-          { first: t_init, delay: 50, weapon: "aliengun_2" },
-          { first: t_init + 25, delay: 50, weapon: "aliengun_n2" },
-        ];
         colour = "red";
         score = 100;
         health = 100;
@@ -692,7 +762,6 @@ const objectInitState = (name, trajectory, t_init) => {
         type = "alien";
         width = 20;
         height = 35;
-        shotTimings = [{ first: t_init + 5, delay: 100, weapon: "alienlaser" }];
         score = 50;
         health = 100;
         colour = "darkred";
@@ -704,7 +773,6 @@ const objectInitState = (name, trajectory, t_init) => {
         type = "alien";
         width = 20;
         height = 35;
-        shotTimings = [{ first: t_init + 5, delay: 400, weapon: "aliengun" }];
         score = 200;
         health = 50;
         colour = "purple";
@@ -716,7 +784,6 @@ const objectInitState = (name, trajectory, t_init) => {
         type = "bonus";
         width = 12;
         height = 12;
-        shotTimings = [];
         score = 100;
         health = 1000;
         colour = "red";
@@ -897,11 +964,39 @@ const runLevel = (time, state, level) => {
   switch (level) {
     case 1:
       {
+        if (time % 50 == 0 && time < 600) {
+          let a = objectMaker(
+            objectInitState(
+              "pawn1",
+              trajectories.trajBuilder(time, trajectories.pawns[0]),
+              [],
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+        if ((time + 200) % 150 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "pawn1",
+              trajectories.trajBuilder(time, trajectories.pawns[1]),
+              shotTimings.shotBuilder(time, shotTimings.gun[1]),
+
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+      }
+      break;
+    case 2:
+      {
         if (time % 160 == 0) {
           let a = objectMaker(
             objectInitState(
               "vader1",
               trajectories.trajBuilder(time, trajectories.vaders[0]),
+              shotTimings.shotBuilder(time, shotTimings.gun[0]),
               time
             )
           );
@@ -912,6 +1007,8 @@ const runLevel = (time, state, level) => {
             objectInitState(
               "vader2",
               trajectories.trajBuilder(time, trajectories.vaders[2]),
+              shotTimings.shotBuilder(time, shotTimings.gun[1]),
+
               time
             )
           );
@@ -922,6 +1019,8 @@ const runLevel = (time, state, level) => {
             objectInitState(
               "healthBonus",
               trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
+
               time
             )
           );
@@ -932,6 +1031,8 @@ const runLevel = (time, state, level) => {
             objectInitState(
               "cannonCooloffBonus",
               trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
+
               time
             )
           );
@@ -939,13 +1040,15 @@ const runLevel = (time, state, level) => {
         }
       }
       break;
-    case 2:
+    case 3:
       {
         if (time % 200 == 0) {
           let a = objectMaker(
             objectInitState(
               "vader1",
               trajectories.trajBuilder(time, trajectories.vaders[0]),
+              shotTimings.shotBuilder(time, shotTimings.gun[0]),
+
               time
             )
           );
@@ -956,6 +1059,8 @@ const runLevel = (time, state, level) => {
             objectInitState(
               "vader1",
               trajectories.trajBuilder(time, trajectories.vaders[1]),
+              shotTimings.shotBuilder(time, shotTimings.gun[0]),
+
               time
             )
           );
@@ -966,6 +1071,8 @@ const runLevel = (time, state, level) => {
             objectInitState(
               "vader1",
               trajectories.trajBuilder(time, trajectories.vaders[2]),
+              shotTimings.shotBuilder(time, shotTimings.gun[0]),
+
               time
             )
           );
@@ -976,6 +1083,8 @@ const runLevel = (time, state, level) => {
             objectInitState(
               "unlockBigLaser",
               trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
+
               time
             )
           );
@@ -983,7 +1092,7 @@ const runLevel = (time, state, level) => {
         }
       }
       break;
-    case 3:
+    case 4:
       {
         //set new initial weapons state for weapons
         // if (time == 50) {
@@ -1013,6 +1122,7 @@ const runLevel = (time, state, level) => {
             objectInitState(
               "laserSpeedBonus",
               trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
               time
             )
           );
@@ -1066,6 +1176,8 @@ const game = {
     canvasRepaint(this.p1, this.time);
     const anim = () => {
       this.time++;
+      console.log(this.time);
+
       canvasRepaint(this.p1, this.time);
       if (this.time < 600) {
         canvasMessagePaint(`LEVEL ${this.level}`);
