@@ -48,7 +48,7 @@ const starfield = {
     });
   },
 };
-console.log(starfield.stars);
+// console.log(starfield.stars);
 
 function canvasRepaint(player, time, level) {
   //background
@@ -180,10 +180,38 @@ const weapons = {
   },
   gun: {
     owned: true,
-    multi: ["laser"],
+    multi: [],
     range: 400,
     v_y: 10,
     v_x: 0,
+    width: 5,
+    height: 5,
+    colour: "white",
+    damage: 34,
+    cooloff: 12,
+    cooling: 0,
+    health: 1,
+  },
+  gun_l: {
+    owned: true,
+    multi: [],
+    range: 400,
+    v_y: 10,
+    v_x: -2,
+    width: 5,
+    height: 5,
+    colour: "white",
+    damage: 34,
+    cooloff: 12,
+    cooling: 0,
+    health: 1,
+  },
+  gun_r: {
+    owned: true,
+    multi: [],
+    range: 400,
+    v_y: 10,
+    v_x: 2,
     width: 5,
     height: 5,
     colour: "white",
@@ -362,8 +390,6 @@ const shootWeapon = (weapon, player) => {
     });
   }
   if (wUser.multi && wUser.multi.length) {
-    console.log("we got a multii");
-
     for (w of wUser.multi) {
       wUser.shots.push({
         weaponType: w,
@@ -373,7 +399,7 @@ const shootWeapon = (weapon, player) => {
         y: player.y + (direction * player.height) / 2,
         active: true,
         // health: weapon.health,
-        ...wStats, //this has too much info
+        ...player.weapons[w], //this has too much info
       });
     }
   }
@@ -639,23 +665,22 @@ const newPlayerInitialState = () => {
     colour: "blue",
     weapons: {
       gun: {
-        // owned: true,
-        // cooling: 0,
-        // cooloff: weapons.gun.cooloff,
         shots: [],
         ...JSON.parse(JSON.stringify(weapons["gun"])), //clone in weapon attributes
       },
+      gun_l: {
+        shots: [],
+        ...JSON.parse(JSON.stringify(weapons["gun_l"])), //clone in weapon attributes
+      },
+      gun_r: {
+        shots: [],
+        ...JSON.parse(JSON.stringify(weapons["gun_r"])), //clone in weapon attributes
+      },
       laser: {
-        // owned: true,
-        // cooling: 0,
-        // cooloff: weapons.laser.cooloff,
         shots: [],
         ...JSON.parse(JSON.stringify(weapons["laser"])),
       },
       biglaser: {
-        // owned: false,
-        // cooling: 0,
-        // cooloff: weapons.biglaser.cooloff,
         shots: [],
         ...JSON.parse(JSON.stringify(weapons["biglaser"])),
       },
@@ -966,6 +991,42 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
         };
       }
       break;
+    case "gunAndLaserMultiBonus":
+      {
+        type = "bonus";
+        width = 12;
+        height = 12;
+        shotTimings = [];
+        score = 100;
+        health = 1000;
+        colour = "pink";
+        x = gameWidth / 2;
+        y = gameHeight / 2;
+
+        bonus = {
+          action: (state, time) => {
+            modifyWeapon({
+              state,
+              weapon: "gun",
+              property: "multi",
+              newvalue: ["gun_l", "gun_r"],
+            });
+            state.bonuses.push({
+              t_init: time,
+              duration: 600,
+              remove: () => {
+                modifyWeapon({
+                  state,
+                  weapon: "gun",
+                  property: "multi",
+                  newvalue: [],
+                });
+              },
+            });
+          },
+        };
+      }
+      break;
     case "unlockBigLaser":
       {
         type = "bonus";
@@ -1251,6 +1312,17 @@ const runLevel = (time, state, level) => {
           );
           game.gameObjects.push(a);
         }
+        if (time % 800 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "gunAndLaserMultiBonus",
+              trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
       }
       break;
     default: {
@@ -1284,7 +1356,7 @@ const game = {
     //reset
     this.gameOver = false;
     this.gameObjects = [];
-    this.level = 1;
+    this.level = 4;
     //init player
     this.p1 = null;
 
