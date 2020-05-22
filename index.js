@@ -200,7 +200,7 @@ const weapons = {
     health: 1,
   },
   gun_l: {
-    owned: false,
+    owned: true, // is multimod so not accessible anyway
     multimod: true,
     range: 400,
     v_y: 10,
@@ -214,7 +214,7 @@ const weapons = {
     health: 1,
   },
   gun_r: {
-    owned: false,
+    owned: true,
     multimod: true,
     range: 400,
     v_y: 10,
@@ -350,7 +350,7 @@ const withDrawAndMoveShots = (state) => {
       //remove shots exceeding range;
       for (let i = 0; i < wKeys.length; i++) {
         let activeShots = weapons[wKeys[i]].shots.filter(
-          (s) => Math.abs(s.y_init - s.y) < s.range && s.health > 0
+          (s) => Math.abs(s.y_init - s.y) < s.range && s.health > 0 //range only in y direction (can do quatratic if needed)
         );
         // console.log("active", activeShots);
 
@@ -391,7 +391,7 @@ const shootWeapon = (weapon, player) => {
       y_init: player.y + (direction * player.height) / 2,
       x: player.x,
       y: player.y + (direction * player.height) / 2,
-      active: true,
+      // active: true,
       // health: weapon.health,
       ...wStats, //this has too much info
     });
@@ -404,7 +404,7 @@ const shootWeapon = (weapon, player) => {
         y_init: player.y + (direction * player.height) / 2,
         x: player.x,
         y: player.y + (direction * player.height) / 2,
-        active: true,
+        // active: true,
         // health: weapon.health,
         ...player.weapons[w], //this has too much info
       });
@@ -480,6 +480,8 @@ const playerShoot = (state) => {
       }
       if (controller.state.c) {
         if (state.weapons.gun.cooling == 0 && state.weapons.gun.owned) {
+          console.log("shooting");
+
           shootWeapon("gun", state);
           heatupWeapon("gun", state);
         }
@@ -600,17 +602,17 @@ const checkWeaponsCollisions = (state) => {
               Math.abs(shots[j].y - gameObjects[k].y) <
                 shots[j].height / 2 + gameObjects[k].height / 2
             ) {
-              //enemy flash white when hit
-              let c = gameObjects[k].colour;
-              gameObjects[k].colour = "white";
-              setTimeout(() => (gameObjects[k].colour = c), 50);
-
               shots[j].health -= 1;
               gameObjects[k].hit(shots[j].damage);
-            }
-            if (gameObjects[k].health <= 0) {
-              shots[j].health -= 1;
-              state.score += gameObjects[k].score;
+
+              if (gameObjects[k].health >= shots[j].damage) {
+                //enemy flash white when hit
+                let c = gameObjects[k].colour;
+                gameObjects[k].colour = "white";
+                setTimeout(() => (gameObjects[k].colour = c), 50);
+              } else {
+                state.score += gameObjects[k].score;
+              }
             }
 
             //player laser stops alien gunshots
@@ -998,7 +1000,7 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
         };
       }
       break;
-    case "cannonAndLaserMultiBonus":
+    case "cannonMultiBonus":
       {
         type = "bonus";
         width = 12;
@@ -1012,18 +1014,18 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
 
         bonus = {
           action: (state, time) => {
-            modifyWeapon({
-              state,
-              weapon: "gun_l",
-              property: "owned",
-              newvalue: true,
-            });
-            modifyWeapon({
-              state,
-              weapon: "gun_r",
-              property: "owned",
-              newvalue: true,
-            });
+            // modifyWeapon({
+            //   state,
+            //   weapon: "gun_l",
+            //   property: "owned",
+            //   newvalue: true,
+            // });
+            // modifyWeapon({
+            //   state,
+            //   weapon: "gun_r",
+            //   property: "owned",
+            //   newvalue: true,
+            // });
             modifyWeapon({
               state,
               weapon: "gun",
@@ -1034,18 +1036,18 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
               t_init: time,
               duration: 600,
               remove: () => {
-                modifyWeapon({
-                  state,
-                  weapon: "gun",
-                  property: "multi",
-                  newvalue: [],
-                });
-                modifyWeapon({
-                  state,
-                  weapon: "gun_l",
-                  property: "owned",
-                  newvalue: false,
-                });
+                // modifyWeapon({
+                //   state,
+                //   weapon: "gun",
+                //   property: "multi",
+                //   newvalue: [],
+                // });
+                // modifyWeapon({
+                //   state,
+                //   weapon: "gun_l",
+                //   property: "owned",
+                //   newvalue: false,
+                // });
                 modifyWeapon({
                   state,
                   weapon: "gun_r",
@@ -1197,6 +1199,17 @@ const runLevel = (time, state, level) => {
               trajectories.trajBuilder(time, trajectories.bonuses[0]),
               [],
 
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+        if (time % 800 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "cannonMultiBonus",
+              trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
               time
             )
           );
@@ -1357,7 +1370,7 @@ const runLevel = (time, state, level) => {
         if (time % 800 == 0) {
           let a = objectMaker(
             objectInitState(
-              "cannonAndLaserMultiBonus",
+              "cannonMultiBonus",
               trajectories.trajBuilder(time, trajectories.bonuses[0]),
               [],
               time
@@ -1451,11 +1464,11 @@ const game = {
 
       //track player
 
-      this.p1.shoot();
+      this.p1.draw();
       this.p1.move();
       this.p1.checkWeaponsCollisions(this.gameObjects);
+      this.p1.shoot();
       this.p1.drawAndMoveShots();
-      this.p1.draw();
       this.p1.removeBonuses(this.time);
       this.p1.checkPlayerCollisions(this.gameObjects, this.time);
 
