@@ -10,11 +10,55 @@ const gameWidth = (canvas.width = 850);
 
 // -------------- canvas
 //
-function canvasRepaint(player, time) {
+
+const starfield = {
+  stars: (a = Array(100)
+    .fill(null)
+    .map((e) => ({
+      x: Math.random() * gameWidth,
+      y: Math.random() * gameHeight,
+      r: Math.random() * 2 + 1,
+      a: Math.random() * 0.3,
+    }))),
+  update(level) {
+    this.stars = this.stars.map((s) => ({
+      x: s.x,
+      y: (s.y + Math.min(level, 9) * s.r * s.a) % gameWidth,
+      r: s.r,
+      a: s.a,
+    }));
+  },
+  draw() {
+    this.stars.forEach((s) => {
+      let g = ctx.createRadialGradient(
+        s.x,
+        s.y,
+        0,
+        s.x + s.r,
+        s.y + s.r,
+        s.r * 2
+      );
+      g.addColorStop(0, "rgba(255, 255, 255, " + s.a + ")");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, 2 * Math.PI);
+      ctx.fillStyle = g;
+      ctx.fill();
+    });
+  },
+};
+console.log(starfield.stars);
+
+function canvasRepaint(player, time, level) {
   //background
   const fillColour = "rgba(3, 3, 3, 0.9)";
   ctx.fillStyle = fillColour;
   ctx.fillRect(0, 0, gameWidth, gameHeight);
+
+  //starfield
+  starfield.update(level);
+  starfield.draw();
 
   //weapon cooldown;
   let wKeys = Object.keys(player.weapons);
@@ -29,12 +73,8 @@ function canvasRepaint(player, time) {
 
   //healthbar
   healthPercent = player.health / 500;
-  // console.log(healthPercent);
-
   if (healthPercent < 0.3) {
     if ((time % 10 > 0) & (time % 10 < 5)) {
-      // console.log("looowww");
-
       ctx.fillStyle = "red";
       ctx.fillRect(gameWidth - 140, gameHeight - 40, healthPercent * 120, 10);
     } else {
@@ -115,7 +155,7 @@ const weapons = {
   laser: {
     owned: true,
     range: 120,
-    v_y: 3, //y v_y
+    v_y: 2, //y v_y
     v_x: 0,
     width: 100,
     height: 3,
@@ -123,7 +163,7 @@ const weapons = {
     damage: 100,
     cooloff: 85, //time until next use
     cooling: 0,
-    health: 3, //how many obstacles it hits before exploding
+    health: 6, //how many obstacles it can hit before disappearing
   },
   biglaser: {
     owned: false,
@@ -134,9 +174,9 @@ const weapons = {
     height: 80,
     colour: "purple",
     damage: 1000,
-    cooloff: 55, //time until next use
+    cooloff: 55,
     cooling: 0,
-    health: 10, //how many obstacles it hits before exploding
+    health: 10,
   },
   gun: {
     owned: true,
@@ -165,8 +205,8 @@ const weapons = {
     range: 400,
     v_y: 5,
     v_x: 0,
-    width: 5,
-    height: 5,
+    width: 4,
+    height: 4,
     colour: "white",
     damage: 34,
     health: 1,
@@ -175,8 +215,8 @@ const weapons = {
     range: 400,
     v_y: 5,
     v_x: 2,
-    width: 5,
-    height: 5,
+    width: 4,
+    height: 4,
     colour: "white",
     damage: 34,
     health: 1,
@@ -185,8 +225,8 @@ const weapons = {
     range: 400,
     v_y: 5,
     v_x: -2,
-    width: 5,
-    height: 5,
+    width: 4,
+    height: 4,
     colour: "white",
     damage: 34,
     health: 1,
@@ -285,7 +325,7 @@ const withDrawAndMoveShots = (state) => {
 
       //draw and update
       shots.forEach((s) => {
-        console.log(s);
+        // console.log(s);
 
         //move shots
         s.y = s.y + direction * s.v_y;
@@ -424,15 +464,15 @@ const restoreDefaults = (state) => {
 };
 
 const modifyWeapon = ({ state, weapon, property, newvalue }) => {
-  console.log("modding...");
-  console.log("weapon", state.weapons[weapon]);
+  // console.log("modding...");
+  // console.log("weapon", state.weapons[weapon]);
 
   if (property == "cooloff") {
     state.weapons[weapon].cooling = 0;
   }
   state.weapons[weapon][property] = newvalue;
-  console.log("modded");
-  console.log("weapon", state.weapons[weapon]);
+  // console.log("modded");
+  // console.log("weapon", state.weapons[weapon]);
 };
 
 // with aliens, bonuses and alien shots
@@ -526,8 +566,6 @@ const checkWeaponsCollisions = (state) => {
             }
 
             //player laser stops alien gunshots
-            console.log(gameObjects[k]);
-
             let alienGunShots = [
               ...gameObjects[k].weapons.aliengun.shots,
               ...gameObjects[k].weapons.aliengun_2.shots,
@@ -707,7 +745,7 @@ const shotTimings = {
   },
   gun: [
     [
-      [0, 50, "aliengun"], //first: time for first shot, delay: ticks until repeated (can make v large if only want once), weapon, weapon
+      [0, 50, "aliengun"], //format: [first,delay,weapon]first: time for first shot, delay: ticks until repeated (can make v large if only want once), weapon, weapon
       [0, 50, "aliengun_2"],
       [25, 50, "aliengun_n2"],
     ],
@@ -1151,7 +1189,7 @@ window.addEventListener("keyup", (e) => controller.keyListener(e));
 
 const game = {
   gameObjects: [],
-  level: null, // set in start fn below
+  level: 1, // set in start fn below
 
   gameOver: true,
   p1: null,
@@ -1173,12 +1211,12 @@ const game = {
 
     this.time = 0;
 
-    canvasRepaint(this.p1, this.time);
+    canvasRepaint(this.p1, this.time, this.level);
     const anim = () => {
       this.time++;
-      console.log(this.time);
+      // console.log(this.time);
 
-      canvasRepaint(this.p1, this.time);
+      canvasRepaint(this.p1, this.time, this.level);
       if (this.time < 600) {
         canvasMessagePaint(`LEVEL ${this.level}`);
       }
@@ -1227,11 +1265,11 @@ const game = {
       } else {
         this.p1.health = 0;
         this.gameOver = true;
-        canvasRepaint(this.p1, this.time);
-        canvasRepaint(this.p1, this.time);
-        canvasRepaint(this.p1, this.time);
-        canvasRepaint(this.p1, this.time);
-        canvasRepaint(this.p1, this.time);
+        canvasRepaint(this.p1, this.time, this.level);
+        canvasRepaint(this.p1, this.time, this.level);
+        canvasRepaint(this.p1, this.time, this.level);
+        canvasRepaint(this.p1, this.time, this.level);
+        canvasRepaint(this.p1, this.time, this.level);
         canvasMessagePaint(`ALIENS WIN`);
         window.cancelAnimationFrame(anim);
         return;
