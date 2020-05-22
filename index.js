@@ -1398,7 +1398,7 @@ const game = {
     //reset
     this.gameOver = false;
     this.gameObjects = [];
-    this.level = 4;
+    this.level = 1;
     //init player
     this.p1 = null;
 
