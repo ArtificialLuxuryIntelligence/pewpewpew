@@ -478,7 +478,7 @@ const modifyWeapon = ({ state, weapon, property, newvalue }) => {
 // with aliens, bonuses and alien shots
 const checkPlayerCollisions = (state) => {
   return {
-    checkPlayerCollisions: (gameObjects) => {
+    checkPlayerCollisions: (gameObjects, time) => {
       for (let i = 0; i < gameObjects.length; i++) {
         //check for collision with enemy/bonus
         if (
@@ -492,7 +492,7 @@ const checkPlayerCollisions = (state) => {
 
           gameObjects[i].health -= 1000; //kills them dead
           if (gameObjects[i].type == "bonus") {
-            gameObjects[i].bonus.action(state);
+            gameObjects[i].bonus.action(state, time);
           } else if (gameObjects[i].type == "alien") {
             state.colour = "red";
             setTimeout(() => (state.colour = "blue"), 100);
@@ -591,7 +591,7 @@ const checkWeaponsCollisions = (state) => {
 
 // ----------Bonuses
 
-// remove old bonuses
+// remove expired bonuses
 const removeBonuses = (state) => {
   return {
     removeBonuses: (time) => {
@@ -599,7 +599,6 @@ const removeBonuses = (state) => {
         if (b.t_init + b.duration <= time) {
           //not just equal in case it skips a frame? may have happened before
           console.log("removing");
-
           console.log(time, b);
           b.remove();
         }
@@ -734,6 +733,19 @@ const trajectories = {
       [800, -0.4, null],
       [1200, 0.4, null],
     ],
+    [
+      // format: [delay, v_x, v_y] // delay: time(tics) after object is created, v_x: new x axis velocity;v_y: new y axis velocity
+      [0, -6, 0.2],
+      [50, 0.1, null],
+      [200, 12, null],
+      [250, -0.4, null],
+      [400, -12, null],
+      [450, 0.4, null],
+      [620, 11, null],
+      [660, -0.4, null],
+
+      [1200, 0.4, null],
+    ],
   ],
 };
 
@@ -828,7 +840,7 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
         x = gameWidth / 2;
         y = gameHeight / 2;
         bonus = {
-          action: (state) => {
+          action: (state, time) => {
             state.health = Math.min(state.health + 200, 500);
             state.bonuses.push({
               remove: () => {},
@@ -850,7 +862,7 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
         y = gameHeight / 2;
 
         bonus = {
-          action: (state) => {
+          action: (state, time) => {
             modifyWeapon({
               state,
               weapon: "gun",
@@ -858,11 +870,45 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
               newvalue: 3,
             });
             state.bonuses.push({
-              t_init,
+              t_init: time, //this sets the duration to start from when the bonus is picked up
               duration: 400,
               remove: () => {
                 console.log("Unmodding");
                 state.weapons.gun.cooloff = weapons.gun.cooloff;
+              },
+            });
+            console.log(time);
+            console.log(state.bonuses);
+          },
+        };
+      }
+      break;
+    case "cannonBackwardsBonus":
+      {
+        type = "bonus";
+        width = 12;
+        height = 12;
+        shotTimings = [];
+        score = 100;
+        health = 1000;
+        colour = weapons.gun.colour;
+        x = gameWidth / 2;
+        y = gameHeight / 2;
+
+        bonus = {
+          action: (state, time) => {
+            modifyWeapon({
+              state,
+              weapon: "gun",
+              property: "v_y",
+              newvalue: -10,
+            });
+            state.bonuses.push({
+              t_init: time,
+              duration: 400,
+              remove: () => {
+                console.log("Unmodding");
+                state.weapons.gun.v_y = weapons.gun.v_y;
               },
             });
           },
@@ -882,7 +928,7 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
         y = gameHeight / 2;
 
         bonus = {
-          action: (state) => {
+          action: (state, time) => {
             modifyWeapon({
               state,
               weapon: "laser",
@@ -890,7 +936,7 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
               newvalue: 9,
             });
             state.bonuses.push({
-              t_init,
+              t_init: time,
               duration: 400,
               remove: () => {
                 modifyWeapon({
@@ -918,7 +964,7 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
         y = gameHeight / 2;
 
         bonus = {
-          action: (state) => {
+          action: (state, time) => {
             modifyWeapon({
               state,
               weapon: "biglaser",
@@ -926,7 +972,7 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
               newvalue: true,
             });
             state.bonuses.push({
-              t_init,
+              t_init: time,
               duration: 4000,
               remove: () => {
                 console.log("Unmodding");
@@ -1002,7 +1048,7 @@ const runLevel = (time, state, level) => {
   switch (level) {
     case 1:
       {
-        if (time % 50 == 0 && time < 600) {
+        if (time % 450 == 0 && time < 600) {
           let a = objectMaker(
             objectInitState(
               "pawn1",
@@ -1019,6 +1065,30 @@ const runLevel = (time, state, level) => {
               "pawn1",
               trajectories.trajBuilder(time, trajectories.pawns[1]),
               shotTimings.shotBuilder(time, shotTimings.gun[1]),
+
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+        if ((time + 200) % 150 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "pawn1",
+              trajectories.trajBuilder(time, trajectories.pawns[2]),
+              shotTimings.shotBuilder(time, shotTimings.gun[1]),
+
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+        if (time % 1500 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "cannonCooloffBonus",
+              trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
 
               time
             )
@@ -1258,7 +1328,7 @@ const game = {
       this.p1.drawAndMoveShots();
       this.p1.draw();
       this.p1.removeBonuses(this.time);
-      this.p1.checkPlayerCollisions(this.gameObjects);
+      this.p1.checkPlayerCollisions(this.gameObjects, this.time);
 
       if (this.p1.health > 0) {
         window.requestAnimationFrame(anim);
