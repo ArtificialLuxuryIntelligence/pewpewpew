@@ -1,9 +1,7 @@
-//to add new weapons - add to weapons, add to player/alien, add-key in controller, add keybiding to playershoot
+//to add new weapons - add to weapons, add to player/alien inigobj, add key in controller, add keybiding to playershoot
 //to add new trajectory - add new array to trajectories
-//to add new alien/object - add new object to switch in objectInitState
+//to add new alien/bonus/object - add new object to switch in objectInitState
 //to create/change level - add items in switch in 'newLevel' function with objects and trajectories (see above)
-
-// DOM
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
@@ -60,7 +58,7 @@ function canvasMessagePaint(message) {
   ctx.textAlign = "center";
 
   ctx.font = "50px Nova Square";
-  ctx.fillText(message, gameWidth / 2, gameHeight / 2);
+  ctx.fillText(message, gameWidth / 2, gameHeight / 2 + 15);
 }
 //--------------  Controller
 
@@ -78,7 +76,6 @@ const controller = {
 
   keyListener: function (e) {
     e.preventDefault();
-    console.log(e.code);
 
     keyState = e.type == "keydown" ? true : false;
     switch (e.code) {
@@ -126,7 +123,6 @@ const weapons = {
     damage: 100,
     cooloff: 85, //time until next use
     cooling: 0,
-
     health: 3, //how many obstacles it hits before exploding
   },
   biglaser: {
@@ -153,7 +149,6 @@ const weapons = {
     damage: 34,
     cooloff: 12,
     cooling: 0,
-
     health: 1,
   },
   alienlaser: {
@@ -204,28 +199,31 @@ const weapons = {
 const withDraw = (state) => {
   return {
     draw: () => {
-      ctx.fillStyle = state.colour;
-      ctx.fillRect(
-        state.x - state.width / 2,
-        state.y - state.height / 2,
-        state.width,
-        state.height
-      );
+      if (state.type == "player" || state.type == "alien") {
+        ctx.fillStyle = state.colour;
+        ctx.fillRect(
+          state.x - state.width / 2,
+          state.y - state.height / 2,
+          state.width,
+          state.height
+        );
+      }
 
-      //   if (state.type == "player") {
-      //     ctx.fillRect(
-      //       state.x - state.width / 2 - state.width / 6,
-      //       state.y - state.height / 2    ,
-      //       state.width / 6,
-      //       state.height * 1.5
-      //     );
-      //     ctx.fillRect(
-      //       state.x + state.width / 2,
-      //       state.y - state.height / 2    ,
-      //       state.width / 6,
-      //       state.height * 1.5
-      //     );
-      //   }
+      if (state.type == "bonus") {
+        ctx.fillStyle = state.colour;
+        ctx.beginPath();
+        let r = state.width / 2;
+        ctx.arc(state.x, state.y, r, 0, 2 * Math.PI, false);
+        ctx.fill();
+
+        // ctx.beginPath();
+        // ctx.arc(state.x, state.y, state.width / 2, 0, 2 * Math.PI, false);
+        // ctx.lineWidth = 1;
+        // ctx.strokeStyle = "white";
+        // ctx.stroke();
+        // ctx.fillStyle = state.colour;
+        // ctx.fill();
+      }
     },
   };
 };
@@ -241,8 +239,8 @@ const withDamage = (state) => {
 const withMove = (state) => {
   return {
     move: () => {
-      state.x += state.x_v;
-      state.y += state.y_v;
+      state.x += state.v_x;
+      state.y += state.v_y;
     },
   };
 };
@@ -254,11 +252,11 @@ const withChangeDirection = (state) => {
     changeDirection: (time) => {
       if (state.trajectory.length && state.trajectory[0].time == time) {
         let newTrajectory = state.trajectory.shift();
-        if (newTrajectory.x_v) {
-          state.x_v = newTrajectory.x_v;
+        if (newTrajectory.v_x) {
+          state.v_x = newTrajectory.v_x;
         }
-        if (newTrajectory.y_v) {
-          state.y_v = newTrajectory.y_v;
+        if (newTrajectory.v_y) {
+          state.v_y = newTrajectory.v_y;
         }
       }
     },
@@ -308,7 +306,6 @@ const withDrawAndMoveShots = (state) => {
 
 const shootWeapon = (weapon, player) => {
   let direction = player.type == "player" ? -1 : 1;
-
   wStats = player.weapons[weapon];
   wUser = player.weapons[weapon];
   if (wUser.owned) {
@@ -319,7 +316,7 @@ const shootWeapon = (weapon, player) => {
       y: player.y + (direction * player.height) / 2,
       active: true,
       health: player.health,
-      ...wStats,
+      ...wStats, //this has too much info
     });
   }
 };
@@ -331,24 +328,24 @@ const playerMove = (state) => {
       //update velocity
       const friction = 0.9;
       if (controller.state.up) {
-        state.y_v -= 1.1;
+        state.v_y -= 1.1;
       }
       if (controller.state.down) {
-        state.y_v += 1.1;
+        state.v_y += 1.1;
       }
       if (controller.state.left) {
-        state.x_v -= 1.1;
+        state.v_x -= 1.1;
       }
       if (controller.state.right) {
-        state.x_v += 1.1;
+        state.v_x += 1.1;
       }
       // friction
-      state.x_v *= friction;
-      state.y_v *= friction;
+      state.v_x *= friction;
+      state.v_y *= friction;
 
       // update position
-      state.x += state.x_v;
-      state.y += state.y_v;
+      state.x += state.v_x;
+      state.y += state.v_y;
 
       // infinite plane
       if (state.x > gameWidth + state.width / 2) {
@@ -409,6 +406,21 @@ const playerShoot = (state) => {
   };
 };
 
+const restoreDefaults = (state) => {
+  return {
+    restoreDefaults: () => {
+      //remove any bonuses
+      console.log("bonuses " + state.bonuses);
+      state.bonuses = [];
+      console.log("bonuses " + state.bonuses);
+      console.log("w", state.weapons);
+
+      state.weapons = newPlayerInitialState().weapons;
+      console.log("w", state.weapons);
+    },
+  };
+};
+
 // with aliens, bonuses and alien shots
 const checkPlayerCollisions = (state) => {
   return {
@@ -416,6 +428,7 @@ const checkPlayerCollisions = (state) => {
       for (let i = 0; i < gameObjects.length; i++) {
         //check for collision with enemy/bonus
         if (
+          gameObjects[i].health > 0 &&
           Math.abs(state.x - gameObjects[i].x) <
             state.width / 2 + gameObjects[i].width / 2 &&
           Math.abs(state.y - gameObjects[i].y) <
@@ -481,13 +494,16 @@ const checkWeaponsCollisions = (state) => {
           for (let k = gameObjects.length - 1; k >= 0; k--) {
             // if (shots.length) {
             if (
+              gameObjects[k].health > 0 &&
               Math.abs(shots[j].x - gameObjects[k].x) <
                 shots[j].width / 2 + gameObjects[k].width / 2 &&
               Math.abs(shots[j].y - gameObjects[k].y) <
                 shots[j].height / 2 + gameObjects[k].height / 2
             ) {
               //changed dynamcally based on health (in draw fn?)
+              let c = gameObjects[k].colour;
               gameObjects[k].colour = "white";
+              setTimeout(() => (gameObjects[k].colour = c), 50);
 
               shots[j].health -= 1;
               gameObjects[k].hit(shots[j].damage);
@@ -510,7 +526,10 @@ const removeBonuses = (state) => {
   return {
     removeBonuses: (time) => {
       state.bonuses.forEach((b) => {
-        if (b.t_init + b.duration == time) {
+        if (b.t_init + b.duration <= time) {
+          //not just equal in case it skips a frame? may have happened before
+          console.log("removing");
+
           console.log(time, b);
           b.remove();
         }
@@ -522,42 +541,44 @@ const removeBonuses = (state) => {
 };
 
 //initial state
-const playerInitialState = {
-  type: "player",
-  health: 500,
-  score: 0,
-  x: gameWidth / 2,
-  y: (8 * gameHeight) / 9,
-  x_v: 0,
-  y_v: 0,
-  width: 45,
-  height: 20,
-  colour: "blue",
-  weapons: {
-    gun: {
-      // owned: true,
-      // cooling: 0,
-      // cooloff: weapons.gun.cooloff,
-      shots: [],
-      ...weapons["gun"],
+const newPlayerInitialState = () => {
+  return {
+    type: "player",
+    health: 500,
+    score: 0,
+    x: gameWidth / 2,
+    y: (8 * gameHeight) / 9,
+    v_x: 0,
+    v_y: 0,
+    width: 45,
+    height: 20,
+    colour: "blue",
+    weapons: {
+      gun: {
+        // owned: true,
+        // cooling: 0,
+        // cooloff: weapons.gun.cooloff,
+        shots: [],
+        ...JSON.parse(JSON.stringify(weapons["gun"])), //clone in weapon attributes
+      },
+      laser: {
+        // owned: true,
+        // cooling: 0,
+        // cooloff: weapons.laser.cooloff,
+        shots: [],
+        ...JSON.parse(JSON.stringify(weapons["laser"])),
+      },
+      biglaser: {
+        // owned: false,
+        // cooling: 0,
+        // cooloff: weapons.biglaser.cooloff,
+        shots: [],
+        ...JSON.parse(JSON.stringify(weapons["biglaser"])),
+      },
     },
-    laser: {
-      // owned: true,
-      // cooling: 0,
-      // cooloff: weapons.laser.cooloff,
-      shots: [],
-      ...weapons["laser"],
-    },
-    biglaser: {
-      // owned: false,
-      // cooling: 0,
-      // cooloff: weapons.biglaser.cooloff,
-      shots: [],
-      ...weapons["biglaser"],
-    },
-  },
-  activeShots: 0,
-  bonuses: [],
+    activeShots: 0,
+    bonuses: [],
+  };
 };
 
 // player factory
@@ -572,10 +593,12 @@ const playerMaker = (state) => {
     checkWeaponsCollisions(state),
     checkPlayerCollisions(state),
     withDamage(state),
-    removeBonuses(state)
+    removeBonuses(state),
+    restoreDefaults(state)
   );
 };
 
+// ----------------------------
 // ----------------------------Aliens
 const alienShoot = (state) => {
   return {
@@ -596,12 +619,12 @@ const alienShoot = (state) => {
 const trajectories = {
   trajBuilder: (t_init, array) => {
     return array.map((e) => {
-      return { time: t_init + e[0], x_v: e[1], y_v: e[2] };
+      return { time: t_init + e[0], v_x: e[1], v_y: e[2] };
     });
   },
   vaders: [
     [
-      [5, -0.5, 0.2], // format: [delay, x_v, y_v] // delay: time(tics) to apply after object is created, x_v: new x axis velocity;y_v: new y axis velocity
+      [5, -0.5, 0.2], // format: [delay, v_x, v_y] // delay: time(tics) to apply after object is created, v_x: new x axis velocity;v_y: new y axis velocity
       [50, 0.4, null],
       [100, 0.4, 2],
       [125, -0.4, null],
@@ -621,7 +644,7 @@ const trajectories = {
   ],
   bonuses: [
     [
-      [5, -0.5, 0.2], // format: [delay, x_v, y_v] // delay: time(tics) after object is created, x_v: new x axis velocity;y_v: new y axis velocity
+      [5, -0.5, 0.2], // format: [delay, v_x, v_y] // delay: time(tics) after object is created, v_x: new x axis velocity;v_y: new y axis velocity
       [50, 0.4, null],
       [100, 0.4, null],
       [125, -0.4, null],
@@ -630,14 +653,15 @@ const trajectories = {
 };
 
 const modifyWeapon = ({ state, weapon, property, newvalue }) => {
-  console.log("modding");
-  console.log("state", state);
+  console.log("modding...");
+  console.log("weapon", state.weapons[weapon]);
 
   if (property == "cooloff") {
     state.weapons[weapon].cooling = 0;
   }
   state.weapons[weapon][property] = newvalue;
-  // state.weapons[weapon].cooloff = weapons[weapon][property];
+  console.log("modded");
+  console.log("weapon", state.weapons[weapon]);
 };
 
 // factory for all game objects
@@ -695,7 +719,7 @@ const objectInitState = (name, trajectory, t_init) => {
         shotTimings = [];
         score = 100;
         health = 1000;
-        colour = "green";
+        colour = "red";
         x = gameWidth / 2;
         y = gameHeight / 2;
         bonus = {
@@ -708,7 +732,7 @@ const objectInitState = (name, trajectory, t_init) => {
         };
       }
       break;
-    case "cannonSpeedBonus":
+    case "cannonCooloffBonus":
       {
         type = "bonus";
         width = 12;
@@ -716,7 +740,7 @@ const objectInitState = (name, trajectory, t_init) => {
         shotTimings = [];
         score = 100;
         health = 1000;
-        colour = "green";
+        colour = weapons.gun.colour;
         x = gameWidth / 2;
         y = gameHeight / 2;
 
@@ -740,6 +764,42 @@ const objectInitState = (name, trajectory, t_init) => {
         };
       }
       break;
+    case "laserSpeedBonus":
+      {
+        type = "bonus";
+        width = 12;
+        height = 12;
+        shotTimings = [];
+        score = 100;
+        health = 1000;
+        colour = weapons.laser.colour;
+        x = gameWidth / 2;
+        y = gameHeight / 2;
+
+        bonus = {
+          action: (state) => {
+            modifyWeapon({
+              state,
+              weapon: "laser",
+              property: "v_y",
+              newvalue: 9,
+            });
+            state.bonuses.push({
+              t_init,
+              duration: 400,
+              remove: () => {
+                modifyWeapon({
+                  state,
+                  weapon: "laser",
+                  property: "v_y",
+                  newvalue: weapons.laser.v_y,
+                });
+              },
+            });
+          },
+        };
+      }
+      break;
     case "unlockBigLaser":
       {
         type = "bonus";
@@ -748,7 +808,7 @@ const objectInitState = (name, trajectory, t_init) => {
         shotTimings = [];
         score = 100;
         health = 1000;
-        colour = "darkgreen";
+        colour = weapons.biglaser.colour;
         x = gameWidth / 2;
         y = gameHeight / 2;
 
@@ -782,8 +842,8 @@ const objectInitState = (name, trajectory, t_init) => {
     health,
     x,
     y,
-    x_v: 0,
-    y_v: 0,
+    v_x: 0,
+    v_y: 0,
     width,
     height,
     colour,
@@ -831,7 +891,9 @@ const objectMaker = (state) => {
 
 // ---------------------------- game levels
 
+//note time is reset at the start of each level so bonuses need to be reset or their remove function will not work as intended
 const runLevel = (time, state, level) => {
+  //state = player //bad naming?
   switch (level) {
     case 1:
       {
@@ -855,7 +917,7 @@ const runLevel = (time, state, level) => {
           );
           game.gameObjects.push(a);
         }
-        if (time % 600 == 0) {
+        if (time == 200) {
           let a = objectMaker(
             objectInitState(
               "healthBonus",
@@ -868,7 +930,7 @@ const runLevel = (time, state, level) => {
         if (time % 1000 == 0) {
           let a = objectMaker(
             objectInitState(
-              "cannonSpeedBonus",
+              "cannonCooloffBonus",
               trajectories.trajBuilder(time, trajectories.bonuses[0]),
               time
             )
@@ -923,26 +985,38 @@ const runLevel = (time, state, level) => {
       break;
     case 3:
       {
-        if (time == 5) {
-          modifyWeapon({
-            state,
-            weapon: "gun",
-            property: "cooloff",
-            newvalue: 3,
-          });
-          modifyWeapon({
-            state,
-            weapon: "biglaser",
-            property: "owned",
-            newvalue: true,
-          });
-          //TO DO! all properties need to be copies from weapons object to playinitialstate object and read from there
-          modifyWeapon({
-            state,
-            weapon: "laser",
-            property: "v_y",
-            newvalue: 8,
-          });
+        //set new initial weapons state for weapons
+        // if (time == 50) {
+        //   modifyWeapon({
+        //     state,
+        //     weapon: "gun",
+        //     property: "cooloff",
+        //     newvalue: 3,
+        //   });
+        //   modifyWeapon({
+        //     state,
+        //     weapon: "biglaser",
+        //     property: "owned",
+        //     newvalue: true,
+        //   });
+        //   //TO DO! all properties need to be copies from weapons object to playinitialstate object and read from there
+        //   // modifyWeapon({
+        //   //   state,
+        //   //   weapon: "laser",
+        //   //   property: "v_y",
+        //   //   newvalue: 8,
+        //   // });
+        // }
+
+        if (time == 300) {
+          let a = objectMaker(
+            objectInitState(
+              "laserSpeedBonus",
+              trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              time
+            )
+          );
+          game.gameObjects.push(a);
         }
       }
       break;
@@ -961,37 +1035,32 @@ window.addEventListener("keydown", (e) => {
     game.start();
   }
 });
-
 window.addEventListener("keyup", (e) => controller.keyListener(e));
 
 //-----------------------------game setup
 
 const game = {
   gameObjects: [],
-  level: 1, //actually set in start fn below
+  level: null, // set in start fn below
 
   gameOver: true,
   p1: null,
   time: 0,
 
   start() {
-    console.log("game . start");
-
     //reset
     this.gameOver = false;
     this.gameObjects = [];
     this.level = 1;
     //init player
     this.p1 = null;
-    console.log(playerInitialState);
 
-    // let p1InitState = Object.assign({}, playerInitialState);
-    // console.log(p1InitState);
+    // let p1InitState = Object.assign({}, newPlayerInitialState); //doesnt deepclone
+    //could jsut make newPlayerInitialState a factory?
+    let state = newPlayerInitialState();
+    this.p1 = playerMaker(state); //new player with initial state (don't want to change initstate so clone here)
+    console.log(this.p1.weapons);
 
-    this.p1 = playerMaker(JSON.parse(JSON.stringify(playerInitialState))); //new player with initial state (don't want to change initstate so clone here)
-    // console.log(this.p1);
-
-    console.log(this.p1);
     this.time = 0;
 
     canvasRepaint(this.p1, this.time);
@@ -1001,22 +1070,19 @@ const game = {
       if (this.time < 600) {
         canvasMessagePaint(`LEVEL ${this.level}`);
       }
+      let activeObjects = this.gameObjects.filter((o) => o.health > 0);
       if (
         //this allows you to farm one level for points and get above threshold for a higher lvl?
-        this.p1.score >= this.level * 1500 + this.level * 250 &&
-        this.gameObjects.length == 0
+        this.time > 1500 &&
+        activeObjects.length == 0
       ) {
         this.level++;
+        this.p1.restoreDefaults();
         this.time = 0;
         this.gameObjects = [];
-        this.p1.bonuses.forEach((b) => b.remove());
-        this.p1.bonuses = [];
       }
       runLevel(this.time, this.p1, this.level);
       //remove if off screen or no health
-      //MAYBE make enemy invisible until it has no active shots left.. then check for health and delete
-      console.log(this.gameObjects[0]);
-
       this.gameObjects = this.gameObjects.filter(
         (e) =>
           e.y < gameHeight + e.height && (e.health > 0 || e.activeShots > 0) //dont delete if has active shots (otherwise the shots go too)//draw function will not draw the alien tho
@@ -1054,7 +1120,7 @@ const game = {
         canvasRepaint(this.p1, this.time);
         canvasRepaint(this.p1, this.time);
         canvasRepaint(this.p1, this.time);
-        canvasMessagePaint(`GAME OVER`);
+        canvasMessagePaint(`ALIENS WIN`);
         window.cancelAnimationFrame(anim);
         return;
       }
