@@ -62,12 +62,14 @@ function canvasRepaint(player, time, level) {
 
   //weapon cooldown;
   let wKeys = Object.keys(player.weapons);
+  let n = 0;
   for (let i = 0; i < wKeys.length; i++) {
-    if (player.weapons[wKeys[i]].owned) {
+    if (player.weapons[wKeys[i]].owned && !player.weapons[wKeys[i]].multimod) {
       let gunPercent =
         1 - player.weapons[wKeys[i]].cooling / player.weapons[wKeys[i]].cooloff;
       ctx.fillStyle = weapons[wKeys[i]].colour;
-      ctx.fillRect(gameWidth - 80, 20 + i * 20, gunPercent * 60, 10);
+      ctx.fillRect(gameWidth - 80, 20 + n * 20, gunPercent * 60, 10);
+      n++;
     }
   }
 
@@ -154,6 +156,8 @@ const controller = {
 const weapons = {
   laser: {
     owned: true,
+    multi: [],
+    multimod: false, // multimods dont show in cooldown display
     range: 120,
     v_y: 2, //y v_y
     v_x: 0,
@@ -167,6 +171,8 @@ const weapons = {
   },
   biglaser: {
     owned: false,
+    multi: [],
+    multimod: false,
     range: 300,
     v_y: 20, //y v_y
     v_x: 0,
@@ -181,6 +187,7 @@ const weapons = {
   gun: {
     owned: true,
     multi: [],
+    multimod: false,
     range: 400,
     v_y: 10,
     v_x: 0,
@@ -193,8 +200,8 @@ const weapons = {
     health: 1,
   },
   gun_l: {
-    owned: true,
-    multi: [],
+    owned: false,
+    multimod: true,
     range: 400,
     v_y: 10,
     v_x: -2,
@@ -207,8 +214,8 @@ const weapons = {
     health: 1,
   },
   gun_r: {
-    owned: true,
-    multi: [],
+    owned: false,
+    multimod: true,
     range: 400,
     v_y: 10,
     v_x: 2,
@@ -991,7 +998,7 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
         };
       }
       break;
-    case "gunAndLaserMultiBonus":
+    case "cannonAndLaserMultiBonus":
       {
         type = "bonus";
         width = 12;
@@ -1007,6 +1014,18 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
           action: (state, time) => {
             modifyWeapon({
               state,
+              weapon: "gun_l",
+              property: "owned",
+              newvalue: true,
+            });
+            modifyWeapon({
+              state,
+              weapon: "gun_r",
+              property: "owned",
+              newvalue: true,
+            });
+            modifyWeapon({
+              state,
               weapon: "gun",
               property: "multi",
               newvalue: ["gun_l", "gun_r"],
@@ -1020,6 +1039,18 @@ const objectInitState = (name, trajectory, shotTimings, t_init) => {
                   weapon: "gun",
                   property: "multi",
                   newvalue: [],
+                });
+                modifyWeapon({
+                  state,
+                  weapon: "gun_l",
+                  property: "owned",
+                  newvalue: false,
+                });
+                modifyWeapon({
+                  state,
+                  weapon: "gun_r",
+                  property: "owned",
+                  newvalue: false,
                 });
               },
             });
@@ -1312,10 +1343,21 @@ const runLevel = (time, state, level) => {
           );
           game.gameObjects.push(a);
         }
+        if (time % 300 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "cannonBackwardsBonus",
+              trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
         if (time % 800 == 0) {
           let a = objectMaker(
             objectInitState(
-              "gunAndLaserMultiBonus",
+              "cannonAndLaserMultiBonus",
               trajectories.trajBuilder(time, trajectories.bonuses[0]),
               [],
               time
@@ -1356,7 +1398,7 @@ const game = {
     //reset
     this.gameOver = false;
     this.gameObjects = [];
-    this.level = 1;
+    this.level = 4;
     //init player
     this.p1 = null;
 
