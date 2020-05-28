@@ -7,6 +7,7 @@ const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
 const gameHeight = (canvas.height = 450);
 const gameWidth = (canvas.width = 850);
+const startingLevel = 1; //for testing
 
 // -------------- canvas
 //
@@ -812,6 +813,11 @@ const shotTimings = {
       [25, 50, "aliengun_n2"],
     ],
     [[5, 100, "aliengun"]],
+    [
+      [0, 100, "aliengun"], //format: [first,delay,weapon]first: time for first shot, delay: ticks until repeated (can make v large if only want once), weapon, weapon
+      [4, 100, "aliengun"],
+      [8, 100, "aliengun"],
+    ],
   ],
 
   laser: [[5, 400, "alienlaser"]],
@@ -1276,14 +1282,14 @@ const runLevel = (time, state, level) => {
             objectInitState(
               "vader1",
               trajectories.trajBuilder(time, trajectories.vaders[0]),
-              shotTimings.shotBuilder(time, shotTimings.gun[0]),
+              shotTimings.shotBuilder(time, shotTimings.gun[1]),
 
               time
             )
           );
           game.gameObjects.push(a);
         }
-        if (time % 250 == 0) {
+        if (time % 280 == 0) {
           let a = objectMaker(
             objectInitState(
               "vader1",
@@ -1322,6 +1328,81 @@ const runLevel = (time, state, level) => {
       }
       break;
     case 4:
+      {
+        if (time % 140 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "vader3",
+              trajectories.trajBuilder(time, trajectories.vaders[0]),
+              shotTimings.shotBuilder(time, shotTimings.gun[2]),
+
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+        if (time % 140 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "vader2",
+              trajectories.trajBuilder(time, trajectories.vaders[2]),
+              shotTimings.shotBuilder(time, shotTimings.gun[2]),
+
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+        // if (time % 250 == 0) {
+        //   let a = objectMaker(
+        //     objectInitState(
+        //       "vader1",
+        //       trajectories.trajBuilder(time, trajectories.vaders[1]),
+        //       shotTimings.shotBuilder(time, shotTimings.gun[0]),
+
+        //       time
+        //     )
+        //   );
+        //   game.gameObjects.push(a);
+        // }
+        // if (time % 300 == 0) {
+        //   let a = objectMaker(
+        //     objectInitState(
+        //       "vader1",
+        //       trajectories.trajBuilder(time, trajectories.vaders[2]),
+        //       shotTimings.shotBuilder(time, shotTimings.gun[0]),
+
+        //       time
+        //     )
+        //   );
+        //   game.gameObjects.push(a);
+        // }
+        if (time == 300) {
+          let a = objectMaker(
+            objectInitState(
+              "healthBonus",
+              trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
+
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+        if (time % 800 == 0) {
+          let a = objectMaker(
+            objectInitState(
+              "laserSpeedBonus",
+              trajectories.trajBuilder(time, trajectories.bonuses[0]),
+              [],
+              time
+            )
+          );
+          game.gameObjects.push(a);
+        }
+      }
+      break;
+    case 5:
       {
         //set new initial weapons state for weapons
         // if (time == 50) {
@@ -1412,7 +1493,7 @@ const game = {
     //reset
     this.gameOver = false;
     this.gameObjects = [];
-    this.level = 1;
+    this.level = startingLevel;
     //init player
     this.p1 = null;
 
