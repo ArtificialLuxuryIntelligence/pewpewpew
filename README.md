@@ -2,7 +2,7 @@
 
 ## Motivation
 
-I built almost all of this game over a couple of days to practice using object composition (no classes - limited use of this keyword).
+I built almost all of this game over a couple of days to practice using object composition (no classes - limited use of *this* keyword).
 
 ## Overview
 
