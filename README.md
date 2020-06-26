@@ -32,7 +32,7 @@ Arrows to move, x,c,v to shoot (when you get the right powerups). Space restarts
 
 ### Build
 
-General overview of the process I followed:
+General overview of the process I devised and followed:
 
 - Create a controller object which holds the state of keys pressed.
 - Create behaviours (move, shoot, draw shots etc) and compose them into a player object.
@@ -50,9 +50,17 @@ General overview of the process I followed:
 #### Object composition
 Game objects are created using factory functions and object composition (Object.assign). The aim of the project was to put into practice these concepts and it was both successful and quite intuitive.
 
+A tricky bug to find during dev was when initialising objects using the same initialistion object - all new objects had a reference to this original initialation object which was not desirable in this case. Solution was to deep clone the object before use.
+
+#### Powerups
+I am pleased with the powerups system which allows quite versatile powerups to be created and then later removed at a give time by running an inverting/undo function.
+
+#### Aliens 
+
+The range of aliens that can be created is vast - the weapons they use, their speed and trajectory and various other attributes can be fine tuned for each enemy.
 
 ## Future features
 
 - No major features are planned.
 - More levels are needed to make game a finished arcade hit! - This process is quite easy and I think the code is quite readable.
-- A second player could be added locally (and perhaps using websockets, remotely)
+- A second player could be added locally (and perhaps remotely using websockets)
