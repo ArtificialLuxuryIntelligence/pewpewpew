@@ -1,5 +1,3 @@
-## about
-
 # Frikkin ALIENS
 
 ## Motivation
