@@ -1,4 +1,4 @@
-//to add new weapons - add to weapons, add to player/alien inigobj, add key in controller, add keybiding to playershoot
+//to add new weapons - add to weapons, add to player/alien initobj (e.g. newPlayerInitialState), add key in controller, add keybiding to playershoot
 //to add new trajectory - add new array to trajectories
 //to add new alien/bonus/object - add new object to switch in objectInitState
 //to create/change level - add items in switch in 'newLevel' function with objects and trajectories (see above)
@@ -1506,6 +1506,7 @@ const game = {
     this.time = 0;
 
     canvasRepaint(this.p1, this.time, this.level);
+
     const anim = () => {
       this.time++;
       // console.log(this.time);
@@ -1516,7 +1517,7 @@ const game = {
       }
       let activeObjects = this.gameObjects.filter((o) => o.health > 0);
       if (
-        //this allows you to farm one level for points and get above threshold for a higher lvl?
+        //this allows you to stay on same lvl forever..
         this.time > 1500 &&
         activeObjects.length == 0
       ) {
@@ -1545,7 +1546,6 @@ const game = {
       // ------------ Player
 
       //track player
-
       this.p1.draw();
       this.p1.move();
       this.p1.checkWeaponsCollisions(this.gameObjects);
@@ -1559,6 +1559,7 @@ const game = {
       } else {
         this.p1.health = 0;
         this.gameOver = true;
+        //paint over non zero opacity:
         canvasRepaint(this.p1, this.time, this.level);
         canvasRepaint(this.p1, this.time, this.level);
         canvasRepaint(this.p1, this.time, this.level);
